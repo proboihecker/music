@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Studio Instruments</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Space+Mono:wght@400;700&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --panel: #16161f;
+    --gold: #c9a84c;
+    --gold-light: #e8c96d;
+    --gold-dim: #7a6230;
+    --glow: rgba(201, 168, 76, 0.4);
+    --text: #c8c0b0;
+    --text-dim: #6a6258;
+    --border: rgba(201,168,76,0.12);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    min-height: 100vh;
+    font-family: 'Space Mono', monospace;
+    color: var(--text);
+    overflow-x: hidden;
+  }
+
+  /* ── Ambient background ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 40% at 50% 0%,   rgba(201,168,76,0.05) 0%, transparent 70%),
+      radial-gradient(ellipse 60% 30% at 10% 50%,  rgba(60,40,120,0.07) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 30% at 90% 50%,  rgba(60,40,120,0.07) 0%, transparent 60%),
+      radial-gradient(ellipse 80% 40% at 50% 100%, rgba(201,168,76,0.04) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Decorative horizontal rule ── */
+  .rule {
+    width: 60px;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--gold), transparent);
+    margin: 0 auto;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 40px;
+    background: rgba(10,10,15,0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .nav-logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    color: var(--gold);
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    text-decoration: none;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 32px;
+    list-style: none;
+  }
+
+  .nav-links a {
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    color: var(--text-dim);
+    text-decoration: none;
+    text-transform: uppercase;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--gold); }
+
+  /* ── HERO ── */
+  .hero {
+    position: relative;
+    z-index: 1;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 120px 24px 80px;
+    gap: 28px;
+  }
+
+  .hero-eyebrow {
+    font-size: 0.6rem;
+    letter-spacing: 0.35em;
+    color: var(--gold-dim);
+    text-transform: uppercase;
+    animation: fadeUp 0.8s ease both;
+  }
+
+  .hero h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2.8rem, 7vw, 5.5rem);
+    font-weight: 400;
+    line-height: 1.1;
+    color: var(--gold-light);
+    letter-spacing: 0.04em;
+    animation: fadeUp 0.8s 0.1s ease both;
+  }
+
+  .hero h1 em {
+    font-style: italic;
+    color: var(--text);
+    font-size: 0.9em;
+  }
+
+  .hero-sub {
+    max-width: 480px;
+    font-size: 0.65rem;
+    line-height: 2;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    animation: fadeUp 0.8s 0.2s ease both;
+  }
+
+  .hero-cta {
+    display: inline-block;
+    border: 1px solid var(--gold-dim);
+    color: var(--gold);
+    padding: 12px 32px;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    text-decoration: none;
+    border-radius: 2px;
+    transition: all 0.2s;
+    animation: fadeUp 0.8s 0.3s ease both;
+  }
+  .hero-cta:hover {
+    background: var(--gold-dim);
+    border-color: var(--gold);
+    box-shadow: 0 0 24px var(--glow);
+  }
+
+  /* Decorative staff lines across hero */
+  .staff-lines {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .staff-lines::before {
+    content: '';
+    position: absolute;
+    left: 0; right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 60px;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0px,
+      transparent 10px,
+      rgba(201,168,76,0.04) 10px,
+      rgba(201,168,76,0.04) 11px
+    );
+  }
+
+  /* Floating music notes */
+  .note-float {
+    position: absolute;
+    font-size: 1.2rem;
+    color: var(--gold-dim);
+    opacity: 0;
+    animation: floatNote 8s ease-in-out infinite;
+    pointer-events: none;
+    user-select: none;
+  }
+  .note-float:nth-child(1) { left: 8%;  top: 20%; animation-delay: 0s;   font-size: 1rem; }
+  .note-float:nth-child(2) { left: 15%; top: 70%; animation-delay: 1.5s; font-size: 1.4rem; }
+  .note-float:nth-child(3) { left: 80%; top: 25%; animation-delay: 0.8s; font-size: 0.9rem; }
+  .note-float:nth-child(4) { left: 88%; top: 65%; animation-delay: 2.5s; font-size: 1.2rem; }
+  .note-float:nth-child(5) { left: 50%; top: 10%; animation-delay: 3.5s; font-size: 0.8rem; }
+  .note-float:nth-child(6) { left: 92%; top: 40%; animation-delay: 1s;   font-size: 1.1rem; }
+
+  @keyframes floatNote {
+    0%   { opacity: 0; transform: translateY(0) rotate(-10deg); }
+    20%  { opacity: 0.4; }
+    80%  { opacity: 0.2; }
+    100% { opacity: 0; transform: translateY(-60px) rotate(10deg); }
+  }
+
+  /* ── SECTION HEADER ── */
+  .section {
+    position: relative;
+    z-index: 1;
+    padding: 80px 24px;
+  }
+
+  .section-header {
+    text-align: center;
+    margin-bottom: 60px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .section-eyebrow {
+    font-size: 0.55rem;
+    letter-spacing: 0.3em;
+    color: var(--gold-dim);
+    text-transform: uppercase;
+  }
+
+  .section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.6rem, 4vw, 2.6rem);
+    font-weight: 400;
+    color: var(--gold);
+    letter-spacing: 0.08em;
+  }
+
+  .section-desc {
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    line-height: 2;
+    max-width: 500px;
+  }
+
+  /* ── INSTRUMENT GRID ── */
+  .instruments-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .instrument-card {
+    position: relative;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 36px 28px 28px;
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    overflow: hidden;
+    transition: border-color 0.25s, transform 0.25s, box-shadow 0.25s;
+    animation: fadeUp 0.6s ease both;
+  }
+
+  .instrument-card:nth-child(1) { animation-delay: 0.05s; }
+  .instrument-card:nth-child(2) { animation-delay: 0.10s; }
+  .instrument-card:nth-child(3) { animation-delay: 0.15s; }
+  .instrument-card:nth-child(4) { animation-delay: 0.20s; }
+  .instrument-card:nth-child(5) { animation-delay: 0.25s; }
+  .instrument-card:nth-child(6) { animation-delay: 0.30s; }
+  .instrument-card:nth-child(7) { animation-delay: 0.35s; }
+  .instrument-card:nth-child(8) { animation-delay: 0.40s; }
+
+  /* Glow bar on top */
+  .instrument-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(to right, transparent, var(--card-accent, var(--gold)), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  /* Ambient card glow */
+  .instrument-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 70% 50% at 50% 0%, var(--card-glow, rgba(201,168,76,0.06)) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+  }
+
+  .instrument-card:hover {
+    border-color: var(--card-accent, var(--gold-dim));
+    transform: translateY(-4px);
+    box-shadow: 0 16px 40px rgba(0,0,0,0.5), 0 0 30px var(--card-glow, rgba(201,168,76,0.08));
+  }
+  .instrument-card:hover::before,
+  .instrument-card:hover::after { opacity: 1; }
+
+  /* Icon area */
+  .card-icon {
+    font-size: 2.8rem;
+    line-height: 1;
+    filter: grayscale(0.3);
+    transition: transform 0.3s, filter 0.3s;
+  }
+  .instrument-card:hover .card-icon {
+    transform: scale(1.1) rotate(-3deg);
+    filter: grayscale(0);
+  }
+
+  /* Category badge */
+  .card-badge {
+    display: inline-block;
+    font-size: 0.48rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--card-accent, var(--gold-dim));
+    border: 1px solid currentColor;
+    padding: 3px 8px;
+    border-radius: 2px;
+    width: fit-content;
+    opacity: 0.7;
+  }
+
+  .card-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.35rem;
+    font-weight: 400;
+    color: var(--gold-light);
+    letter-spacing: 0.06em;
+  }
+
+  .card-desc {
+    font-size: 0.58rem;
+    line-height: 1.9;
+    color: var(--text-dim);
+    letter-spacing: 0.06em;
+    flex: 1;
+  }
+
+  /* Key facts row */
+  .card-facts {
+    display: flex;
+    gap: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+
+  .card-fact {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .card-fact-label {
+    font-size: 0.44rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .card-fact-value {
+    font-size: 0.6rem;
+    color: var(--text);
+    letter-spacing: 0.05em;
+  }
+
+  /* Launch arrow */
+  .card-launch {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.55rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--card-accent, var(--gold-dim));
+    margin-top: 4px;
+    opacity: 0;
+    transform: translateX(-8px);
+    transition: opacity 0.25s, transform 0.25s;
+  }
+  .instrument-card:hover .card-launch {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  /* Featured card (piano) */
+  .card-featured {
+    grid-column: span 2;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 32px;
+    padding: 40px 36px;
+  }
+  .card-featured .card-icon { font-size: 4rem; }
+  .card-featured .card-content { display: flex; flex-direction: column; gap: 14px; flex: 1; }
+  .card-featured .card-name { font-size: 1.8rem; }
+  .card-featured-badge {
+    position: absolute;
+    top: 16px; right: 20px;
+    font-size: 0.45rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    background: var(--gold);
+    color: var(--bg);
+    padding: 4px 10px;
+    border-radius: 2px;
+  }
+
+  @media (max-width: 640px) {
+    .card-featured { grid-column: span 1; flex-direction: column; }
+  }
+
+  /* ── CATEGORIES FILTER ── */
+  .filter-bar {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 40px;
+  }
+
+  .filter-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 6px 18px;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.55rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.15s;
+  }
+  .filter-btn:hover,
+  .filter-btn.active {
+    background: var(--gold-dim);
+    border-color: var(--gold);
+    color: var(--gold-light);
+    box-shadow: 0 0 12px var(--glow);
+  }
+
+  /* ── STATS BAND ── */
+  .stats-band {
+    position: relative;
+    z-index: 1;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 48px 24px;
+  }
+
+  .stats-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 40px;
+    text-align: center;
+  }
+
+  @media (max-width: 600px) {
+    .stats-inner { grid-template-columns: repeat(2, 1fr); gap: 24px; }
+  }
+
+  .stat-num {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.4rem;
+    color: var(--gold);
+    font-weight: 400;
+    letter-spacing: 0.05em;
+  }
+  .stat-label {
+    font-size: 0.52rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-top: 6px;
+  }
+
+  /* ── FEATURES SECTION ── */
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 20px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .feature-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 28px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    animation: fadeUp 0.6s ease both;
+  }
+
+  .feature-icon {
+    font-size: 1.5rem;
+  }
+  .feature-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.95rem;
+    color: var(--gold-light);
+    letter-spacing: 0.05em;
+  }
+  .feature-desc {
+    font-size: 0.56rem;
+    line-height: 1.9;
+    color: var(--text-dim);
+    letter-spacing: 0.06em;
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    position: relative;
+    z-index: 1;
+    border-top: 1px solid var(--border);
+    padding: 40px 24px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    align-items: center;
+  }
+
+  .footer-logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.3rem;
+    color: var(--gold);
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+  }
+
+  .footer-links {
+    display: flex;
+    gap: 24px;
+    list-style: none;
+  }
+  .footer-links a {
+    font-size: 0.55rem;
+    letter-spacing: 0.15em;
+    color: var(--text-dim);
+    text-decoration: none;
+    text-transform: uppercase;
+    transition: color 0.2s;
+  }
+  .footer-links a:hover { color: var(--gold); }
+
+  .footer-copy {
+    font-size: 0.5rem;
+    letter-spacing: 0.1em;
+    color: var(--text-dim);
+    opacity: 0.5;
+  }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── SCROLL REVEAL ── */
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.7s ease, transform 0.7s ease;
+  }
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Divider ornament */
+  .ornament {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    justify-content: center;
+    padding: 20px 0;
+  }
+  .ornament-line {
+    width: 80px;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--gold-dim));
+  }
+  .ornament-line:last-child {
+    background: linear-gradient(to left, transparent, var(--gold-dim));
+  }
+  .ornament-dot {
+    color: var(--gold);
+    font-size: 0.7rem;
+    letter-spacing: 0.3em;
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-logo" href="#">Studio</a>
+  <ul class="nav-links">
+    <li><a href="#instruments">Instruments</a></li>
+    <li><a href="#features">Features</a></li>
+    <li><a href="piano_app.html">Launch Piano</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="staff-lines"></div>
+  <!-- floating notes -->
+  <span class="note-float">♩</span>
+  <span class="note-float">♪</span>
+  <span class="note-float">♫</span>
+  <span class="note-float">♬</span>
+  <span class="note-float">𝄞</span>
+  <span class="note-float">♩</span>
+
+  <p class="hero-eyebrow">Virtual Music Studio</p>
+  <h1>Play Every<br><em>Instrument</em></h1>
+  <div class="rule"></div>
+  <p class="hero-sub">A curated collection of browser-based instruments. No plugins, no downloads — just sound, craft, and your keyboard.</p>
+  <a href="#instruments" class="hero-cta">Explore Instruments</a>
+</section>
+
+<!-- STATS -->
+<div class="stats-band">
+  <div class="stats-inner">
+    <div>
+      <div class="stat-num">8</div>
+      <div class="stat-label">Instruments</div>
+    </div>
+    <div>
+      <div class="stat-num">88</div>
+      <div class="stat-label">Piano Keys</div>
+    </div>
+    <div>
+      <div class="stat-num">∞</div>
+      <div class="stat-label">Combinations</div>
+    </div>
+    <div>
+      <div class="stat-num">0</div>
+      <div class="stat-label">Downloads</div>
+    </div>
+  </div>
+</div>
+
+<!-- INSTRUMENTS -->
+<section class="section" id="instruments">
+  <div class="section-header reveal">
+    <p class="section-eyebrow">The Collection</p>
+    <h2 class="section-title">Choose Your Instrument</h2>
+    <div class="rule"></div>
+    <p class="section-desc">From the velvet resonance of a grand piano to the sharp crack of a snare drum — every instrument is playable directly in your browser.</p>
+  </div>
+
+  <!-- Filter -->
+  <div class="filter-bar reveal">
+    <button class="filter-btn active" data-filter="all">All</button>
+    <button class="filter-btn" data-filter="keyboard">Keyboard</button>
+    <button class="filter-btn" data-filter="percussion">Percussion</button>
+    <button class="filter-btn" data-filter="string">String</button>
+    <button class="filter-btn" data-filter="wind">Wind</button>
+    <button class="filter-btn" data-filter="electronic">Electronic</button>
+  </div>
+
+  <div class="instruments-grid">
+
+    <!-- Piano - Featured -->
+    <a class="instrument-card card-featured reveal"
+       href="piano_app.html"
+       data-category="keyboard"
+       style="--card-accent:#c9a84c; --card-glow:rgba(201,168,76,0.10);">
+      <span class="card-featured-badge">Available Now</span>
+      <div class="card-icon">🎹</div>
+      <div class="card-content">
+        <span class="card-badge">Keyboard</span>
+        <div class="card-name">Grand Piano</div>
+        <p class="card-desc">A full 88-key concert grand with rich multi-partial synthesis, reverb, sustain pedal, and real-time keyboard control. Every note, every octave — fingertip ready.</p>
+        <div class="card-facts">
+          <div class="card-fact">
+            <span class="card-fact-label">Keys</span>
+            <span class="card-fact-value">88</span>
+          </div>
+          <div class="card-fact">
+            <span class="card-fact-label">Octaves</span>
+            <span class="card-fact-value">7.25</span>
+          </div>
+          <div class="card-fact">
+            <span class="card-fact-label">Range</span>
+            <span class="card-fact-value">A0 – C8</span>
+          </div>
+          <div class="card-fact">
+            <span class="card-fact-label">Controls</span>
+            <span class="card-fact-value">Keyboard + Mouse</span>
+          </div>
+        </div>
+        <div class="card-launch">Open Piano Studio →</div>
+      </div>
+    </a>
+
+    <!-- Drums -->
+    <a class="instrument-card reveal"
+       href="#"
+       data-category="percussion"
+       style="--card-accent:#c0704a; --card-glow:rgba(192,112,74,0.10);">
+      <div class="card-icon">🥁</div>
+      <span class="card-badge">Percussion</span>
+      <div class="card-name">Drum Kit</div>
+      <p class="card-desc">A full acoustic drum kit — kick, snare, hi-hats, toms, and cymbals. Map pads to your keyboard and lay down beats in real time.</p>
+      <div class="card-facts">
+        <div class="card-fact">
+          <span class="card-fact-label">Pads</span>
+          <span class="card-fact-value">12</span>
+        </div>
+        <div class="card-fact">
+          <span class="card-fact-label">Style</span>
+          <span class="card-fact-value">Acoustic</span>
+        </div>
+      </div>
+      <div class="card-launch">Coming Soon →</div>
+    </a>
+
+    <!-- Guitar -->
+    <a class="instrument-card reveal"
+       href="#"
+       data-category="string"
+       style="--card-accent:#7a9c5a; --card-glow:rgba(122,156,90,0.10);">
+      <div class="card-icon">🎸</div>
+      <span class="card-badge">String</span>
+      <div class="card-name">Electric Guitar</div>
+      <p class="card-desc">Six strings, multiple voicings, and switchable clean, crunch, and lead tones. Strum chords or shred single notes across the fretboard.</p>
+      <div class="card-facts">
+        <div class="card-fact">
+          <span class="card-fact-label">Strings</span>
+          <span class="card-fact-value">6</span>
+        </div>
+        <div class="card-fact">
+          <span class="card-fact-label">Tones</span>
+          <span class="card-fact-value">3</span>
+        </div>
+      </div>
+      <div class="card-launch">Coming Soon →</div>
+    </a>
+
+    <!-- Violin -->
+    <a class="instrument-card reveal"
+       href="#"
+       data-category="string"
+       style="--card-accent:#a07050; --card-glow:rgba(160,112,80,0.10);">
+      <div class="card-icon">🎻</div>
+      <span class="card-badge">String</span>
+      <div class="card-name">Violin</div>
+      <p class="card-desc">Expressive bowed string synthesis with vibrato and dynamics control. From delicate pianissimo to soaring fortissimo passages.</p>
+      <div class="card-facts">
+        <div class="card-fact">
+          <span class="card-fact-label">Range</span>
+          <span class="card-fact-value">G3 – A7</span>
+        </div>
+        <div class="card-fact">
+          <span class="card-fact-label">Style</span>
+          <span class="card-fact-value">Bowed</span>
+        </div>
+      </div>
+      <div class="card-launch">Coming Soon →</div>
+    </a>
+
+    <!-- Trumpet -->
+    <a class="instrument-card reveal"
+       href="#"
+       data-category="wind"
+       style="--card-accent:#c9a84c; --card-glow:rgba(201,168,76,0.08);">
+      <div class="card-icon">🎺</div>
+      <span class="card-badge">Wind</span>
+      <div class="card-name">Trumpet</div>
+      <p class="card-desc">Bright, brassy, and bold. Play chromatic scales across two and a half octaves with authentic valve-based articulation and mute modes.</p>
+      <div class="card-facts">
+        <div class="card-fact">
+          <span class="card-fact-label">Range</span>
+          <span class="card-fact-value">F#3 – D6</span>
+        </div>
+        <div class="card-fact">
+          <span class="card-fact-label">Mutes</span>
+          <span class="card-fact-value">3</span>
+        </div>
+      </div>
+      <div class="card-launch">Coming Soon →</div>
+    </a>
+
+    <!-- Saxophone -->
+    <a class="instrument-card reveal"
+       href="#"
+       data-category="wind"
+       style="--card-accent:#b8934a; --card-glow:rgba(184,147,74,0.10);">
+      <div class="card-icon">🎷</div>
+      <span class="card-badge">Wind</span>
+      <div class="card-name">Saxophone</div>
+      <p class="card-desc">Silky alto sax synthesis with smooth legato transitions. Jazz, blues, or classical — the most expressive wind instrument in the collection.</p>
+      <div class="card-facts">
+        <div class="card-fact">
+          <span class="card-fact-label">Type</span>
+          <span class="card-fact-value">Alto</span>
+        </div>
+        <div class="card-fact">
+          <span class="card-fact-label">Range</span>
+          <span class="card-fact-value">Db3 – A5</span>
+        </div>
+      </div>
+      <div class="card-launch">Coming Soon →</div>
+    </a>
+
+    <!-- Synthesizer -->
+    <a class="instrument-card reveal"
+       href="#"
+       data-category="electronic"
+       style="--card-accent:#7060c0; --card-glow:rgba(112,96,192,0.12);">
+      <div class="card-icon">🎛️</div>
+      <span class="card-badge">Electronic</span>
+      <div class="card-name">Synthesizer</div>
+      <p class="card-desc">A modular-style polyphonic synth with oscillators, filters, LFO, and an arpeggiator. Design sounds from scratch or browse curated presets.</p>
+      <div class="card-facts">
+        <div class="card-fact">
+          <span class="card-fact-label">Voices</span>
+          <span class="card-fact-value">8-poly</span>
+        </div>
+        <div class="card-fact">
+          <span class="card-fact-label">Oscillators</span>
+          <span class="card-fact-value">3</span>
+        </div>
+      </div>
+      <div class="card-launch">Coming Soon →</div>
+    </a>
+
+    <!-- Bass Guitar -->
+    <a class="instrument-card reveal"
+       href="#"
+       data-category="string"
+       style="--card-accent:#5a8060; --card-glow:rgba(90,128,96,0.10);">
+      <div class="card-icon">🎸</div>
+      <span class="card-badge">String</span>
+      <div class="card-name">Bass Guitar</div>
+      <p class="card-desc">Deep, punchy, and groovy. A 4-string bass with fingered and slapped articulations for laying down the low-end foundation of any track.</p>
+      <div class="card-facts">
+        <div class="card-fact">
+          <span class="card-fact-label">Strings</span>
+          <span class="card-fact-value">4</span>
+        </div>
+        <div class="card-fact">
+          <span class="card-fact-label">Range</span>
+          <span class="card-fact-value">E1 – G4</span>
+        </div>
+      </div>
+      <div class="card-launch">Coming Soon →</div>
+    </a>
+
+  </div>
+</section>
+
+<!-- ORNAMENT DIVIDER -->
+<div class="ornament reveal">
+  <div class="ornament-line"></div>
+  <span class="ornament-dot">♩ ♪ ♫</span>
+  <div class="ornament-line"></div>
+</div>
+
+<!-- FEATURES -->
+<section class="section" id="features">
+  <div class="section-header reveal">
+    <p class="section-eyebrow">Under the Hood</p>
+    <h2 class="section-title">Built for Musicianship</h2>
+    <div class="rule"></div>
+    <p class="section-desc">Every instrument is powered by the Web Audio API — low latency, high fidelity, and no installation required.</p>
+  </div>
+
+  <div class="features-grid">
+    <div class="feature-card reveal">
+      <div class="feature-icon">⌨️</div>
+      <div class="feature-title">Keyboard Mapped</div>
+      <p class="feature-desc">Every instrument maps to your QWERTY keyboard. Play naturally without a MIDI controller or audio interface.</p>
+    </div>
+    <div class="feature-card reveal">
+      <div class="feature-icon">🎛️</div>
+      <div class="feature-title">Real-Time Controls</div>
+      <p class="feature-desc">Volume, reverb, sustain, octave shifting, and waveform selection — all adjustable mid-performance without interruption.</p>
+    </div>
+    <div class="feature-card reveal">
+      <div class="feature-icon">🔊</div>
+      <div class="feature-title">Web Audio Engine</div>
+      <p class="feature-desc">Built on the Web Audio API with multi-oscillator synthesis, convolution reverb, and precise gain envelope shaping.</p>
+    </div>
+    <div class="feature-card reveal">
+      <div class="feature-icon">📱</div>
+      <div class="feature-title">Touch Enabled</div>
+      <p class="feature-desc">Multi-touch support lets you play chords and gestures on phones and tablets with the same responsiveness as desktop.</p>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">Studio</div>
+  <div class="rule"></div>
+  <ul class="footer-links">
+    <li><a href="#instruments">Instruments</a></li>
+    <li><a href="#features">Features</a></li>
+    <li><a href="piano_app.html">Piano</a></li>
+  </ul>
+  <p class="footer-copy">© 2026 Studio · Browser-based music instruments</p>
+</footer>
+
+<script>
+// ── Scroll reveal ──────────────────────────────────────────────
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+      observer.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.12 });
+
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// ── Filter bar ─────────────────────────────────────────────────
+const filterBtns = document.querySelectorAll('.filter-btn');
+const cards = document.querySelectorAll('.instrument-card');
+
+filterBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    filterBtns.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    const filter = btn.dataset.filter;
+    cards.forEach(card => {
+      const cat = card.dataset.category;
+      if (filter === 'all' || cat === filter) {
+        card.style.opacity = '1';
+        card.style.transform = '';
+        card.style.pointerEvents = '';
+      } else {
+        card.style.opacity = '0.2';
+        card.style.transform = 'scale(0.97)';
+        card.style.pointerEvents = 'none';
+      }
+    });
+  });
+});
+
+// ── Smooth scroll for anchor links ────────────────────────────
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', e => {
+    const target = document.querySelector(a.getAttribute('href'));
+    if (target) { e.preventDefault(); target.scrollIntoView({ behavior: 'smooth' }); }
+  });
+});
+</script>
+</body>
+</html>
