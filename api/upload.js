@@ -1,17 +1,19 @@
 import { put } from '@vercel/blob';
 
-export const config = { runtime: 'edge' };
+export default async function handler(req, res) {
+  if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
 
-export default async function handler(req) {
-  if (req.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
+  const filename = req.headers['x-filename'];
+  if (!filename) return res.status(400).send('Missing filename');
 
-  const filename = req.headers.get('x-filename');
-  if (!filename) return new Response('Missing filename', { status: 400 });
+  const chunks = [];
+  for await (const chunk of req) chunks.push(chunk);
+  const buffer = Buffer.concat(chunks);
 
-  const result = await put(filename, req.body, {
+  const result = await put(filename, buffer, {
     access: 'public',
-    token: process.env.BLOB_READ_WRITE_TOKEN,  // safe — server side only
+    token: process.env.BLOB_READ_WRITE_TOKEN,
   });
 
-  return Response.json({ url: result.url });
+  res.status(200).json({ url: result.url });
 }

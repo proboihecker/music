@@ -1,13 +1,11 @@
 import { del } from '@vercel/blob';
 
-export const config = { runtime: 'edge' };
+export default async function handler(req, res) {
+  if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
 
-export default async function handler(req) {
-  if (req.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
-
-  const { urls } = await req.json();
-  if (!urls?.length) return new Response('Missing urls', { status: 400 });
+  const { urls } = req.body;
+  if (!urls?.length) return res.status(400).send('Missing urls');
 
   await del(urls, { token: process.env.BLOB_READ_WRITE_TOKEN });
-  return new Response('OK');
+  res.status(200).send('OK');
 }
