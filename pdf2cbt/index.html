@@ -408,95 +408,44 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
 // ══════════════════════════════════════════════
-//  ENVIRONMENT & STORAGE CONFIG
+//  VERCEL BLOB CONFIG
+//  Set your token here or load from env at build time.
+//  For a pure frontend deploy, this is acceptable.
 // ══════════════════════════════════════════════
-const IS_PRODUCTION = window.location.hostname !== 'localhost' && !window.location.hostname.startsWith('127.');
-const VERCEL_BLOB_TOKEN = localStorage.getItem('VERCEL_BLOB_TOKEN') || '';
-const USE_VERCEL_BLOB = IS_PRODUCTION && VERCEL_BLOB_TOKEN;
-
-// For Vercel Blob API (production)
-const VERCEL_API_URL = 'https://blob.vercel-storage.com';
+// const VERCEL_BLOB_TOKEN = window.__VERCEL_BLOB_TOKEN__ || '';
+// ^ Inject this at deploy time, e.g. via a build script that replaces
+//   the placeholder, or set it directly: const VERCEL_BLOB_TOKEN = 'vercel_blob_rw_...';
 
 // ══════════════════════════════════════════════
-//  STORAGE ABSTRACTION LAYER
+//  VERCEL BLOB: upload a Blob/File, return public URL
+// ══════════════════════════════════════════════
+async function blobUpload(filename, blob) {
+  const res = await fetch('/api/upload', {
+    method: 'POST',
+    headers: { 'x-filename': filename },
+    body: blob,
+  });
+  if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
+  const data = await res.json();
+  return data.url;
+}
+
+async function blobDelete(urls) {
+  await fetch('/api/delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ urls }),
+  }).catch(() => {});
+}
+
+// ══════════════════════════════════════════════
+//  STORAGE ABSTRACTION LAYER (IndexedDB only — images live in Vercel Blob)
 // ══════════════════════════════════════════════
 const StorageManager = {
-  async put(store, val) {
-    if (USE_VERCEL_BLOB) {
-      return this.blobPut(store, val);
-    }
-    return idbPut(store, val);
-  },
-  async get(store, key) {
-    if (USE_VERCEL_BLOB) {
-      return this.blobGet(store, key);
-    }
-    return idbGet(store, key);
-  },
-  async getAll(store) {
-    if (USE_VERCEL_BLOB) {
-      return this.blobGetAll(store);
-    }
-    return idbGetAll(store);
-  },
-  async delete(store, key) {
-    if (USE_VERCEL_BLOB) {
-      return this.blobDelete(store, key);
-    }
-    return idbDel(store, key);
-  },
-  async blobPut(store, val) {
-    try {
-      const path = `${store}/${val.id || val.key}`;
-      const res = await fetch(`${VERCEL_API_URL}/${path}`, {
-        method: 'PUT',
-        headers: { 'Authorization': `Bearer ${VERCEL_BLOB_TOKEN}` },
-        body: JSON.stringify(val)
-      });
-      if (!res.ok) throw new Error('Failed to save to Vercel Blob');
-    } catch (e) {
-      console.error('Blob storage failed, falling back to IndexedDB:', e);
-      return idbPut(store, val);
-    }
-  },
-  async blobGet(store, key) {
-    try {
-      const path = `${store}/${key}`;
-      const res = await fetch(`${VERCEL_API_URL}/${path}`, {
-        headers: { 'Authorization': `Bearer ${VERCEL_BLOB_TOKEN}` }
-      });
-      if (!res.ok) return null;
-      return await res.json();
-    } catch (e) {
-      console.error('Blob get failed, falling back to IndexedDB:', e);
-      return idbGet(store, key);
-    }
-  },
-  async blobGetAll(store) {
-    try {
-      const res = await fetch(`${VERCEL_API_URL}/list?prefix=${store}`, {
-        headers: { 'Authorization': `Bearer ${VERCEL_BLOB_TOKEN}` }
-      });
-      if (!res.ok) return [];
-      const data = await res.json();
-      return data.blobs || [];
-    } catch (e) {
-      console.error('Blob list failed, falling back to IndexedDB:', e);
-      return idbGetAll(store);
-    }
-  },
-  async blobDelete(store, key) {
-    try {
-      const path = `${store}/${key}`;
-      await fetch(`${VERCEL_API_URL}/${path}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${VERCEL_BLOB_TOKEN}` }
-      });
-    } catch (e) {
-      console.error('Blob delete failed, falling back to IndexedDB:', e);
-      return idbDel(store, key);
-    }
-  }
+  put:    (store, val)      => idbPut(store, val),
+  get:    (store, key)      => idbGet(store, key),
+  getAll: (store)           => idbGetAll(store),
+  delete: (store, key)      => idbDel(store, key),
 };
 
 // ══════════════════════════════════════════════
@@ -513,8 +462,6 @@ function openDB() {
       const d = e.target.result;
       if (!d.objectStoreNames.contains('tests'))
         d.createObjectStore('tests', { keyPath: 'id' });
-      if (!d.objectStoreNames.contains('images'))
-        d.createObjectStore('images', { keyPath: 'key' });
       if (!d.objectStoreNames.contains('sessions'))
         d.createObjectStore('sessions', { keyPath: 'testId' });
     };
@@ -710,16 +657,17 @@ async function processZip(file) {
 
     for (let i = 0; i < imgs.length; i++) {
       const pct = 10 + Math.round((i / imgs.length) * 83);
-      showProgress(true, `Saving image ${i+1} / ${imgs.length}…`, pct);
-
-      const blob    = await imgs[i].entry.async('blob');
-      const dataUrl = await blobToDataUrl(blob);
-      await StorageManager.put('images', { key: id + '_' + i, dataUrl });
+      showProgress(true, `Uploading image ${i+1} / ${imgs.length}…`, pct);
 
       const fname   = imgs[i].path.replace(/\\/g,'/').split('/').pop();
+      const blob    = await imgs[i].entry.async('blob');
+
+      // Upload raw blob → get back a permanent CDN URL; no base64 conversion needed
+      const url = await blobUpload(`examforge/${id}/${i}_${fname}`, blob);
+
       const sm      = fname.match(/^([A-Za-z][A-Za-z_]+?)_Q\d+/i);
       const section = sm ? sm[1].replace(/_/g,' ') : 'General';
-      questions.push({ name: fname, section });
+      questions.push({ name: fname, section, url });   // store URL, not data
       if (!sections.includes(section)) sections.push(section);
     }
 
@@ -741,15 +689,6 @@ async function processZip(file) {
     console.error(err);
     showToast('Error: ' + err.message);
   }
-}
-
-function blobToDataUrl(blob) {
-  return new Promise((res, rej) => {
-    const r = new FileReader();
-    r.onload = () => res(r.result);
-    r.onerror = rej;
-    r.readAsDataURL(blob);
-  });
 }
 
 function showProgress(show, label = '', pct = 0) {
@@ -836,16 +775,11 @@ async function openTest(id) {
 // ══════════════════════════════════════════════
 //  QUESTION RENDER
 // ══════════════════════════════════════════════
-async function getImage(idx) {
-  const key = meta.id + '_' + idx;
-  if (imgCache[key]) return imgCache[key];
-  const rec = await StorageManager.get('images', key);
-  const url = rec ? rec.dataUrl : '';
-  // LRU: keep 12 images
-  const keys = Object.keys(imgCache);
-  if (keys.length >= 12) delete imgCache[keys[0]];
-  imgCache[key] = url;
-  return url;
+function getImage(idx) {
+  // Images are now permanent CDN URLs stored in question metadata — no async fetch needed.
+  // imgCache retained for API consistency (prefetch calls are now no-ops, which is fine).
+  if (!meta || !qMeta[idx]) return '';
+  return qMeta[idx].url || '';
 }
 
 async function renderQuestion(idx) {
@@ -861,16 +795,15 @@ async function renderQuestion(idx) {
   document.getElementById('qSubjectBadge').textContent = q.section;
 
   // Image
+  // Image — load directly from Vercel Blob CDN URL
   const imgEl = document.getElementById('qImage');
   document.getElementById('qImageWrap').style.opacity = '0.4';
-  const url = await getImage(idx);
-  imgEl.src = url;
-  imgEl.onload = () => { document.getElementById('qImageWrap').style.opacity = '1'; };
+  imgEl.onload  = () => { document.getElementById('qImageWrap').style.opacity = '1'; };
+  imgEl.onerror = () => { document.getElementById('qImageWrap').style.opacity = '1'; };
+  imgEl.src = getImage(idx);   // synchronous — just reads qMeta[idx].url
 
   document.getElementById('qPanel').scrollTo(0, 0);
-
-  // Pre-fetch neighbours
-  getImage(idx + 1); getImage(idx - 1);
+  // Browser handles its own HTTP caching for CDN URLs; no manual prefetch needed.
 
   // Options
   const optionsEl = document.getElementById('optionsGrid');
@@ -1062,11 +995,8 @@ async function confirmDelete() {
   if (!delTarget) return;
   const rec = await StorageManager.get('tests', delTarget);
   if (rec) {
-    // Delete all images
-    const tx = _db.transaction('images', 'readwrite');
-    const store = tx.objectStore('images');
-    for (let i = 0; i < rec.questionCount; i++) store.delete(delTarget + '_' + i);
-    await new Promise((res, rej) => { tx.oncomplete=res; tx.onerror=e=>rej(e); });
+    const urls = (rec.questions || []).map(q => q.url).filter(Boolean);
+    if (urls.length) await blobDelete(urls);   // single clean call
     await StorageManager.delete('tests', delTarget);
   }
   delTarget = null;
